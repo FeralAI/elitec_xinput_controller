@@ -5,6 +5,18 @@
 #ifndef _ELITEC_MAPPING_
 #define _ELITEC_MAPPING_
 
+#ifndef USE_JOYSTICKS
+#define USE_JOYSTICKS 0
+#endif
+
+#ifndef USE_ANALOG_TRIGGERS
+#define USE_ANALOG_TRIGGERS 0
+#endif
+
+#ifndef USE_JOYSTICK_EMULATION
+#define USE_JOYSTICK_EMULATION 0
+#endif
+
 struct ButtonToPinMapping {
   uint8_t portIndex;
   uint8_t portPin;
@@ -53,29 +65,44 @@ struct ButtonToPinMapping {
 #define PORTF_INDEX 4
 
 #define PORT_COUNT 5
+#define INPUT_PIN_COUNT (sizeof(BUTTON_MAP) / sizeof(BUTTON_MAP[0]))
 
 // Add/update pin to button mapping here
 const ButtonToPinMapping BUTTON_MAP[] = {
-  { PORTB_INDEX, PIN_DPAD_DOWN, DPAD_DOWN },
   { PORTB_INDEX, PIN_DPAD_UP, DPAD_UP },
+  { PORTB_INDEX, PIN_DPAD_DOWN, DPAD_DOWN },
   { PORTB_INDEX, PIN_DPAD_LEFT, DPAD_LEFT },
   { PORTB_INDEX, PIN_DPAD_RIGHT, DPAD_RIGHT },
-
   { PORTD_INDEX, PIN_BUTTON_A, BUTTON_A },
   { PORTE_INDEX, PIN_BUTTON_B, BUTTON_B },
   { PORTB_INDEX, PIN_BUTTON_X, BUTTON_X },
   { PORTB_INDEX, PIN_BUTTON_Y, BUTTON_Y },
-
   { PORTB_INDEX, PIN_BUTTON_LB, BUTTON_LB },
   { PORTD_INDEX, PIN_BUTTON_RB, BUTTON_RB },
-  { PORTF_INDEX, PIN_BUTTON_LT, TRIGGER_LEFT },
-  { PORTF_INDEX, PIN_BUTTON_RT, TRIGGER_RIGHT },
-  { PORTC_INDEX, PIN_BUTTON_LOGO, BUTTON_LOGO },
-
   { PORTD_INDEX, PIN_BUTTON_BACK, BUTTON_BACK },
   { PORTD_INDEX, PIN_BUTTON_START, BUTTON_START },
+  { PORTC_INDEX, PIN_BUTTON_LOGO, BUTTON_LOGO },
   { PORTD_INDEX, PIN_BUTTON_L3, BUTTON_L3 },
   { PORTC_INDEX, PIN_BUTTON_R3, BUTTON_R3 },
+#if USE_ANALOG_TRIGGERS == 0
+  { PORTF_INDEX, PIN_BUTTON_LT, TRIGGER_LEFT },
+  { PORTF_INDEX, PIN_BUTTON_RT, TRIGGER_RIGHT },
+#endif
+};
+
+const ButtonToPinMapping JOYSTICK_LEFT_MAP[] = {
+  { PORTF_INDEX, PIN_JOY_LEFT_X, JOY_LEFT },
+  { PORTF_INDEX, PIN_JOY_LEFT_Y, JOY_LEFT },
+};
+
+const ButtonToPinMapping JOYSTICK_RIGHT_MAP[] = {
+  { PORTF_INDEX, PIN_JOY_RIGHT_X, JOY_RIGHT },
+  { PORTF_INDEX, PIN_JOY_RIGHT_Y, JOY_RIGHT },
+};
+
+const ButtonToPinMapping ANALOG_TRIGGER_MAP[] = {
+  { PORTF_INDEX, PIN_BUTTON_LT, TRIGGER_LEFT },
+  { PORTF_INDEX, PIN_BUTTON_RT, TRIGGER_RIGHT },
 };
 
 /**
@@ -100,12 +127,12 @@ void configureInputs() {
 /**
  * Retrieves the input states from all ports
  */
-void getInputStates(uint8_t registerStates[]) {
-  registerStates[PORTB_INDEX] = PINB;
-  registerStates[PORTC_INDEX] = PINC;
-  registerStates[PORTD_INDEX] = PIND;
-  registerStates[PORTE_INDEX] = PINE;
-  registerStates[PORTF_INDEX] = PINF;
+void getInputStates(uint8_t portStates[]) {
+  portStates[PORTB_INDEX] = PINB;
+  portStates[PORTC_INDEX] = PINC;
+  portStates[PORTD_INDEX] = PIND;
+  portStates[PORTE_INDEX] = PINE;
+  portStates[PORTF_INDEX] = PINF;
 }
 
 #endif

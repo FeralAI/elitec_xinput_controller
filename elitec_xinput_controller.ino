@@ -5,6 +5,9 @@
 
 //#define DEBUG
 #define DEBOUNCE_MICROSECONDS 5
+#define USE_JOYSTICKS 0
+#define USE_ANALOG_TRIGGERS 0
+#define USE_JOYSTICK_EMULATION 0
 
 #ifdef DEBUG
 #include <Wire.h>
@@ -13,12 +16,14 @@
 #endif
 #include <XInput.h>
 #include "elitec_mapping.h"
-
-const uint8_t inputPinCount = sizeof(BUTTON_MAP) / sizeof(BUTTON_MAP[0]);
+#include "limits.h"
 
 // State variables
-uint16_t pressed = 0;
-uint8_t registerStates[PORT_COUNT];
+uint8_t portStates[PORT_COUNT];
+uint16_t joystickStatesX[2];
+uint16_t joystickStatesY[2];
+uint8_t triggerStates[2];
+uint32_t pressed = 0; // Keeps track of pressed button state, order defined by BUTTON_MAP order
 #ifdef DEBUG
 unsigned long startTime = 0;
 unsigned long readTime[3] = { ULONG_MAX, 0, 0 };
@@ -59,32 +64,33 @@ void readRegisters() {
 #ifdef DEBUG
   startTime = micros();
 #endif
-  getInputStates(registerStates);
+  getInputStates(portStates);
 #ifdef DEBUG
   readTime[2] = micros() - startTime;
 #endif
 }
 
-// Parsing logic takes 120-164µs
-// XInput calls add ~50-100µs
+// Parsing logic takes 140-184µs
+// XInput calls are ~40µs of that
 void parseInputs() {
 #ifdef DEBUG
   startTime = micros();
 #endif
-  uint16_t lastPressed = pressed;
+  uint32_t lastPressed = pressed;
   pressed = 0;
-  for (int i = 0; i < inputPinCount; i++) {
+  for (int i = 0; i < INPUT_PIN_COUNT; i++) {
     // If HIGH, not pressed
-    if (registerStates[BUTTON_MAP[i].portIndex] >> BUTTON_MAP[i].portPin & 1) {
-      pressed &= ~(1 << i);          // Set bit to 0
-      if (lastPressed & (1 << i))    // Check if last pressed bit is 1
+    if (portStates[BUTTON_MAP[i].portIndex] >> BUTTON_MAP[i].portPin & 1) {
+      if (lastPressed & (1UL << i))    // Check if last pressed bit is 1
         XInput.setButton(BUTTON_MAP[i].button, false);
     } else {
-      pressed |= (1 << i);           // Set bit to 1
-      if (!(lastPressed & (1 << i))) // Check if last pressed bit is 0
+      uint32_t value = (1UL << i);
+      pressed |= value;           // Set state bit to 1
+      if (!(lastPressed & value)) // Check if last pressed bit is 0
         XInput.setButton(BUTTON_MAP[i].button, true);
     }
   }
+  XInput.send();
 #ifdef DEBUG
   parseTime[2] = micros() - startTime;
 #endif
@@ -105,28 +111,28 @@ void printState() {
 
   display.print("R: ");
   display.print(readTime[0]);
-  display.print(", ");
+  display.print(" ");
   display.print(readTime[1]);
-  display.print(", ");
+  display.print(" ");
   display.println(readTime[2]);
 
   display.print("P: ");
   display.print(parseTime[0]);
-  display.print(", ");
+  display.print(" ");
   display.print(parseTime[1]);
-  display.print(", ");
+  display.print(" ");
   display.println(parseTime[2]);
 
   display.print("L: ");
   display.print(loopTime[0]);
-  display.print(", ");
+  display.print(" ");
   display.print(loopTime[1]);
-  display.print(", ");
+  display.print(" ");
   display.println(loopTime[2]);
 
   display.print("S: ");
-  for (int i = 0; i < inputPinCount; i++)
-     display.print(pressed & (1 << i) ? "1" : "0");
+  for (int i = 0; i < INPUT_PIN_COUNT; i++)
+     display.print(pressed & (1UL << i) ? "1" : "0");
   display.println();
 
   display.display();
