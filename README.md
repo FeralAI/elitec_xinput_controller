@@ -1,6 +1,6 @@
 # Elite-C XInput Controller
 
-DIY XInput controller using an Elite-C microcontroller board. The Elite-C is mostly used for custom keyboards and flashing with QMK, but the ATMEGA32U4 and the 6 additional I/O pins make this a great target for a controller board that doesn't require shift registers or GPIO expanders.
+DIY XInput controller using an Elite-C microcontroller board. The Elite-C is mostly used for custom keyboards and flashing with QMK, but the ATmega32U4 and the 6 additional I/O pins make this a great target for a a complete XInput controller board that doesn't require shift registers or GPIO expanders.
 
 ## Pin Mapping
 
@@ -21,7 +21,7 @@ The Elite-C is labelled with the port pins instead of typical Arduino pin number
 | Back          | PD3      | No     |
 | Start         | PD2      | No     |
 | Left Bumper   | PB7      | No     |
-| Right Bumper  | PD5      | No     |
+| Right Bumper  | PB0      | No     |
 | Left Trigger  | PF1      | Yes    |
 | Right Trigger | PF0      | Yes    |
 | L3            | PD4      | No     |
@@ -36,6 +36,5 @@ The Elite-C is labelled with the port pins instead of typical Arduino pin number
 
 * Optimize loop logic
 * Document build and flash steps
-* Check SOCD cleaning in XInput lib
 * Create boards repo for Elite-C
 * Latency testing

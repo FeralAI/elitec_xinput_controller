@@ -1,10 +1,10 @@
 // Elite-C Arcade Stick
 //
 // This sketch handles an arcade stick with 1 4/8-way joystick and 10 digital buttons (14 pins).
-// Enabling the DEBUG flag will output to a 128x32 OLED since serial monitoring is unavailable in XInput mode.
+// Enabling the DEBUG flag will output to a 128x32 OLED connected via I2C since serial monitoring is unavailable in XInput mode.
 
 //#define DEBUG
-#define DEBOUNCE_MICROSECONDS 5
+#define DEBOUNCE_MICROSECONDS 1
 #define USE_JOYSTICKS 0
 #define USE_ANALOG_TRIGGERS 0
 #define USE_JOYSTICK_EMULATION 0
@@ -19,18 +19,26 @@
 #include "limits.h"
 
 // State variables
-uint8_t portStates[PORT_COUNT];
-uint16_t joystickStatesX[2];
-uint16_t joystickStatesY[2];
-uint8_t triggerStates[2];
-uint32_t pressed = 0; // Keeps track of pressed button state, order defined by BUTTON_MAP order
+uint8_t portStates[PORT_COUNT];             // The current port register values
+uint8_t dpadStates[4] = { };                // The dpad input states
+uint8_t buttonStates[BUTTON_COUNT] = { };   // The button states
+uint8_t triggerStates[2] = { };             // The analog trigger states
+uint16_t joystickStatesX[2] = { };          // The left joystick states
+uint16_t joystickStatesY[2] = { };          // The right joystick states
 #ifdef DEBUG
-unsigned long startTime = 0;
-unsigned long readTime[3] = { ULONG_MAX, 0, 0 };
-unsigned long parseTime[3] = { ULONG_MAX, 0, 0 };
-unsigned long loopTime[3] = { ULONG_MAX, 0, 0 };
+uint32_t readTime[3] = { ULONG_MAX, 0, 0 };
+uint32_t parseTime[3] = { ULONG_MAX, 0, 0 };
+uint32_t loopTime[3] = { ULONG_MAX, 0, 0 };
 Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire);
 #endif
+
+inline void setButton(ButtonToPinMapping mapping, uint8_t lastButtonStates[]) __attribute__((always_inline));
+
+void setButton(ButtonToPinMapping mapping, uint8_t lastButtonStates[]) {
+  buttonStates[mapping.stateIndex] = (portStates[mapping.portIndex] >> mapping.portPin & 1);
+  if (buttonStates[mapping.stateIndex] != lastButtonStates[mapping.stateIndex])
+    XInput.setButton(mapping.button, !buttonStates[mapping.stateIndex]);
+}
 
 void setup() {
 #ifdef DEBUG
@@ -41,12 +49,62 @@ void setup() {
 
 void loop() {
 #ifdef DEBUG
-  unsigned long loopStartTime = micros();
+  uint32_t loopStartTime = micros();
+  uint32_t startTime = loopStartTime;
 #endif
-  readRegisters();
-  parseInputs();
+
+  // Read logic takes 4-16µs
+  getInputStates(portStates);
+
 #ifdef DEBUG
-  loopTime[2] = micros() - loopStartTime;
+  readTime[2] = micros() - startTime;
+  startTime = micros();
+#endif
+
+  // Cache previous states for this loop
+  uint8_t lastDpadStates[4];
+  uint8_t lastButtonStates[BUTTON_COUNT];
+  memcpy(lastDpadStates, dpadStates, sizeof(lastDpadStates));
+  memcpy(lastButtonStates, buttonStates, sizeof(lastButtonStates));
+
+  // Clear the current states
+  // memset(dpadStates, 0, sizeof(dpadStates));
+  // memset(buttonStates, 0, sizeof(buttonStates));
+
+  // Get/set directional inputs
+  dpadStates[MapDpadUp.stateIndex]    = (portStates[MapDpadUp.portIndex] >> MapDpadUp.portPin & 1);
+  dpadStates[MapDpadDown.stateIndex]  = (portStates[MapDpadDown.portIndex] >> MapDpadDown.portPin & 1);
+  dpadStates[MapDpadLeft.stateIndex]  = (portStates[MapDpadLeft.portIndex] >> MapDpadLeft.portPin & 1);
+  dpadStates[MapDpadRight.stateIndex] = (portStates[MapDpadRight.portIndex] >> MapDpadRight.portPin & 1);
+  if (memcmp(lastDpadStates, dpadStates, sizeof(lastDpadStates)) != 0) {
+    XInput.setDpad(
+      dpadStates[MapDpadUp.stateIndex] == 0,
+      dpadStates[MapDpadDown.stateIndex] == 0,
+      dpadStates[MapDpadLeft.stateIndex] == 0,
+      dpadStates[MapDpadRight.stateIndex] == 0,
+      true
+    );
+  }
+
+  // Get/set button inputs
+  setButton(MapButtonStart, lastButtonStates);
+  setButton(MapButtonBack, lastButtonStates);
+  setButton(MapButtonL3, lastButtonStates);
+  setButton(MapButtonR3, lastButtonStates);
+  setButton(MapButtonLB, lastButtonStates);
+  setButton(MapButtonRB, lastButtonStates);
+  setButton(MapButtonLogo, lastButtonStates);
+  setButton(MapButtonA, lastButtonStates);
+  setButton(MapButtonB, lastButtonStates);
+  setButton(MapButtonX, lastButtonStates);
+  setButton(MapButtonY, lastButtonStates);
+  setButton(MapButtonLT, lastButtonStates);
+  setButton(MapButtonRT, lastButtonStates);
+
+#ifdef DEBUG
+  uint32_t endTime = micros();
+  parseTime[2] = endTime - startTime;
+  loopTime[2] = endTime - loopStartTime;
   loopTime[0] = min(loopTime[0], loopTime[2]);
   loopTime[1] = max(loopTime[1], loopTime[2]);
   readTime[0] = min(readTime[0], readTime[2]);
@@ -56,44 +114,7 @@ void loop() {
   printState();
 #endif
   // TODO: Adjust debounce delay, getting multiple presses on 240Hz display
-  delayMicroseconds(DEBOUNCE_MICROSECONDS);
-}
-
-// Read logic takes 4-16µs
-void readRegisters() {
-#ifdef DEBUG
-  startTime = micros();
-#endif
-  getInputStates(portStates);
-#ifdef DEBUG
-  readTime[2] = micros() - startTime;
-#endif
-}
-
-// Parsing logic takes 140-184µs
-// XInput calls are ~40µs of that
-void parseInputs() {
-#ifdef DEBUG
-  startTime = micros();
-#endif
-  uint32_t lastPressed = pressed;
-  pressed = 0;
-  for (int i = 0; i < INPUT_PIN_COUNT; i++) {
-    // If HIGH, not pressed
-    if (portStates[BUTTON_MAP[i].portIndex] >> BUTTON_MAP[i].portPin & 1) {
-      if (lastPressed & (1UL << i))    // Check if last pressed bit is 1
-        XInput.setButton(BUTTON_MAP[i].button, false);
-    } else {
-      uint32_t value = (1UL << i);
-      pressed |= value;           // Set state bit to 1
-      if (!(lastPressed & value)) // Check if last pressed bit is 0
-        XInput.setButton(BUTTON_MAP[i].button, true);
-    }
-  }
-  XInput.send();
-#ifdef DEBUG
-  parseTime[2] = micros() - startTime;
-#endif
+  // delayMicroseconds(DEBOUNCE_MICROSECONDS);
 }
 
 #ifdef DEBUG
@@ -131,8 +152,10 @@ void printState() {
   display.println(loopTime[2]);
 
   display.print("S: ");
-  for (int i = 0; i < INPUT_PIN_COUNT; i++)
-     display.print(pressed & (1UL << i) ? "1" : "0");
+  for (int i = 0; i < 4; i++)
+    display.print(dpadStates[i] ? "0" : "1");
+  for (int i = 0; i < BUTTON_COUNT; i++)
+    display.print(buttonStates[i] ? "0" : "1");
   display.println();
 
   display.display();
