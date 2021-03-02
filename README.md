@@ -34,6 +34,7 @@ The Elite-C is labelled with the port pins instead of typical Arduino pin number
 
 ## TODOs
 
+* Implement analog reads for sticks and triggers
 * Optimize loop logic
 * Document build and flash steps
 * Create boards repo for Elite-C
