@@ -14,15 +14,15 @@
  * since serial monitoring is unavailable in XInput mode.
  *****************************************************************************/
 
-//#define DEBUG
+#define DEBUG
 #define USE_JOYSTICKS 0
 #define USE_ANALOG_TRIGGERS 0
 #define USE_JOYSTICK_EMULATION 0
+#define USE_SOCD 1
 
 #ifdef DEBUG
-#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include "ssd1306.h"
+#include "ssd1306_console.h"
 #endif
 #include <XInput.h>
 #include "elitec_mapping.h"
@@ -38,7 +38,6 @@ uint16_t joystickStatesY[2] = { };        // The right joystick states
 uint32_t readTime[3] = { ULONG_MAX, 0, 0 };
 uint32_t parseTime[3] = { ULONG_MAX, 0, 0 };
 uint32_t loopTime[3] = { ULONG_MAX, 0, 0 };
-Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire);
 #endif
 
 inline void setButton(ButtonToPinMapping mapping, uint8_t portStates[], uint8_t lastButtonStates[]) __attribute__((always_inline));
@@ -50,10 +49,10 @@ void setButton(ButtonToPinMapping mapping, uint8_t portStates[], uint8_t lastBut
 }
 
 void setup() {
+  configureInputs();
 #ifdef DEBUG
   setupDisplay();
 #endif
-  configureInputs();
 }
 
 void loop() {
@@ -83,13 +82,28 @@ void loop() {
   dpadStates[MapDpadLeft.stateIndex]  = (portStates[MapDpadLeft.portIndex] >> MapDpadLeft.portPin & 1);
   dpadStates[MapDpadRight.stateIndex] = (portStates[MapDpadRight.portIndex] >> MapDpadRight.portPin & 1);
   if (memcmp(lastDpadStates, dpadStates, sizeof(lastDpadStates)) != 0) {
+#if USE_SOCD
+    bool up = !dpadStates[MapDpadUp.stateIndex];
+    bool down = !dpadStates[MapDpadDown.stateIndex];
+    bool left = !dpadStates[MapDpadLeft.stateIndex];
+    bool right = !dpadStates[MapDpadRight.stateIndex];
+    if (up && down) {
+      down = false;
+    }
+    if (left && right) {
+      left = false;
+      right = false;
+    }
+    XInput.setDpad(up, down, left, right, false);
+#else
     XInput.setDpad(
       !dpadStates[MapDpadUp.stateIndex],
       !dpadStates[MapDpadDown.stateIndex],
       !dpadStates[MapDpadLeft.stateIndex],
       !dpadStates[MapDpadRight.stateIndex],
-      true
+      false
     );
+#endif
   }
 
   // Get/set button inputs
@@ -110,60 +124,46 @@ void loop() {
 #ifdef DEBUG
   uint32_t endTime = micros();
   parseTime[2] = endTime - startTime;
+  parseTime[0] = min(parseTime[0], parseTime[2]);
+  parseTime[1] = max(parseTime[1], parseTime[2]);
   loopTime[2] = endTime - loopStartTime;
   loopTime[0] = min(loopTime[0], loopTime[2]);
   loopTime[1] = max(loopTime[1], loopTime[2]);
   readTime[0] = min(readTime[0], readTime[2]);
   readTime[1] = max(readTime[1], readTime[2]);
-  parseTime[0] = min(parseTime[0], parseTime[2]);
-  parseTime[1] = max(parseTime[1], parseTime[2]);
   printState();
 #endif
-  // TODO: Adjust debounce delay, getting multiple presses on 240Hz display
-  // delayMicroseconds(DEBOUNCE_MICROSECONDS);
 }
 
 #ifdef DEBUG
 void setupDisplay() {
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-  display.clearDisplay();
-  display.display();
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
+  ssd1306_128x32_i2c_init();
+  ssd1306_clearScreen();
+  ssd1306_setFixedFont(ssd1306xled_font6x8);
 }
 
 void printState() {
-  display.clearDisplay();
-  display.setCursor(0, 0);
+  char buf[20];
+  sprintf(buf, "R: %lu %lu %lu", readTime[0], readTime[1], readTime[2]);
+  sprintf(buf, "%-20s", buf);
+  ssd1306_printFixed(0, 0, buf, STYLE_NORMAL);
+  memset(buf, 0, sizeof(buf));
+  sprintf(buf, "P: %lu %lu %lu", parseTime[0], parseTime[1], parseTime[2]);
+  sprintf(buf, "%-20s", buf);
+  ssd1306_printFixed(0, 8, buf, STYLE_NORMAL);
+  memset(buf, 0, sizeof(buf));
+  sprintf(buf, "L: %lu %lu %lu", loopTime[0], loopTime[1], loopTime[2]);
+  sprintf(buf, "%-20s", buf);
+  ssd1306_printFixed(0, 16, buf, STYLE_NORMAL);
+  memset(buf, 0, sizeof(buf));
 
-  display.print("R: ");
-  display.print(readTime[0]);
-  display.print(" ");
-  display.print(readTime[1]);
-  display.print(" ");
-  display.println(readTime[2]);
-
-  display.print("P: ");
-  display.print(parseTime[0]);
-  display.print(" ");
-  display.print(parseTime[1]);
-  display.print(" ");
-  display.println(parseTime[2]);
-
-  display.print("L: ");
-  display.print(loopTime[0]);
-  display.print(" ");
-  display.print(loopTime[1]);
-  display.print(" ");
-  display.println(loopTime[2]);
-
-  display.print("S: ");
-  for (int i = 0; i < 4; i++)
-    display.print(dpadStates[i] ? "0" : "1");
-  for (int i = 0; i < BUTTON_COUNT; i++)
-    display.print(buttonStates[i] ? "0" : "1");
-  display.println();
-
-  display.display();
+  buf[0] = 'S';
+  buf[1] = ':';
+  buf[2] = ' ';
+  for (int i = 3; i < 7; i++)
+    buf[i] = dpadStates[i - 3] ? '0' : '1';
+  for (int i = 7; i < 20; i++)
+    buf[i] = buttonStates[i - 7] ? '0' : '1';
+  ssd1306_printFixed(0, 24, buf, STYLE_NORMAL);     
 }
 #endif

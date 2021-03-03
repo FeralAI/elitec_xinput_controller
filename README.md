@@ -2,6 +2,13 @@
 
 DIY XInput controller using an Elite-C microcontroller board.
 
+## Dependencies
+
+This sketch depends on the following libraries:
+
+* [Arduino XInput Library](https://github.com/dmadison/ArduinoXInput)
+* [SSD1306 Display Driver](https://github.com/lexus2k/ssd1306)
+
 ## Description
 
 A full XInput controller contains the following inputs:
