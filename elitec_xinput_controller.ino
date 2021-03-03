@@ -4,15 +4,11 @@
  * A full XInput controller contains the following inputs:
  * - 10 + 1 digital buttons
  * - 4-way directional input
- * - 2 analog joysticks
- * - 2 analog/digital triggers
+ * - 2 analog joysticks (16-bit)
+ * - 2 analog/digital triggers (8-bit)
  * 
- * This requires a total of 21 pins on the MCU board (15 digital inputs, 6
- * analog inputs), however the common Pro Micro variants only contain 18
- * usable pins, and up to 20 with some modifications. The Elite-C not only
- * offers a USB-C interface, it provides 24 usable pins. That is enough to
- * cover each input without using shift registers or GPIO expanders while also
- * leaving a few open pins for other purposes.
+ * This sketch currently handles all digital inputs, though all required analog
+ * pins are currently allocated until analog reads are implemented.
  * 
  * Enabling the DEBUG flag will output to a 128x32 OLED connected via I2C
  * since serial monitoring is unavailable in XInput mode.
@@ -80,10 +76,6 @@ void loop() {
   uint8_t lastButtonStates[BUTTON_COUNT];
   memcpy(lastDpadStates, dpadStates, sizeof(lastDpadStates));
   memcpy(lastButtonStates, buttonStates, sizeof(lastButtonStates));
-
-  // Clear the current states
-  // memset(dpadStates, 0, sizeof(dpadStates));
-  // memset(buttonStates, 0, sizeof(buttonStates));
 
   // Get/set directional inputs
   dpadStates[MapDpadUp.stateIndex]    = (portStates[MapDpadUp.portIndex] >> MapDpadUp.portPin & 1);
