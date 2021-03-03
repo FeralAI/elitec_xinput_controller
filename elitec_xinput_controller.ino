@@ -33,7 +33,6 @@
 #include "limits.h"
 
 // State variables
-uint8_t portStates[PORT_COUNT];           // The current port register values
 uint8_t dpadStates[4] = { };              // The dpad input states
 uint8_t buttonStates[BUTTON_COUNT] = { }; // The button states
 uint8_t triggerStates[2] = { };           // The analog trigger states
@@ -46,11 +45,10 @@ uint32_t loopTime[3] = { ULONG_MAX, 0, 0 };
 Adafruit_SSD1306 display = Adafruit_SSD1306(128, 32, &Wire);
 #endif
 
-inline void setButton(ButtonToPinMapping mapping, uint8_t lastButtonStates[]) __attribute__((always_inline));
+inline void setButton(ButtonToPinMapping mapping, uint8_t portStates[], uint8_t lastButtonStates[]) __attribute__((always_inline));
 
-void setButton(ButtonToPinMapping mapping, uint8_t lastButtonStates[]) {
+void setButton(ButtonToPinMapping mapping, uint8_t portStates[], uint8_t lastButtonStates[]) {
   buttonStates[mapping.stateIndex] = (portStates[mapping.portIndex] >> mapping.portPin & 1);
-  // Only set button state if changed
   if (buttonStates[mapping.stateIndex] != lastButtonStates[mapping.stateIndex])
     XInput.setButton(mapping.button, !buttonStates[mapping.stateIndex]);
 }
@@ -69,6 +67,7 @@ void loop() {
 #endif
 
   // Read logic takes 4-16µs
+  uint8_t portStates[PORT_COUNT];
   getInputStates(portStates);
 
 #ifdef DEBUG
@@ -91,32 +90,30 @@ void loop() {
   dpadStates[MapDpadDown.stateIndex]  = (portStates[MapDpadDown.portIndex] >> MapDpadDown.portPin & 1);
   dpadStates[MapDpadLeft.stateIndex]  = (portStates[MapDpadLeft.portIndex] >> MapDpadLeft.portPin & 1);
   dpadStates[MapDpadRight.stateIndex] = (portStates[MapDpadRight.portIndex] >> MapDpadRight.portPin & 1);
-  
-  // Only set dpad inputs if changed
   if (memcmp(lastDpadStates, dpadStates, sizeof(lastDpadStates)) != 0) {
     XInput.setDpad(
-      dpadStates[MapDpadUp.stateIndex] == 0,
-      dpadStates[MapDpadDown.stateIndex] == 0,
-      dpadStates[MapDpadLeft.stateIndex] == 0,
-      dpadStates[MapDpadRight.stateIndex] == 0,
+      !dpadStates[MapDpadUp.stateIndex],
+      !dpadStates[MapDpadDown.stateIndex],
+      !dpadStates[MapDpadLeft.stateIndex],
+      !dpadStates[MapDpadRight.stateIndex],
       true
     );
   }
 
   // Get/set button inputs
-  setButton(MapButtonStart, lastButtonStates);
-  setButton(MapButtonBack, lastButtonStates);
-  setButton(MapButtonL3, lastButtonStates);
-  setButton(MapButtonR3, lastButtonStates);
-  setButton(MapButtonLB, lastButtonStates);
-  setButton(MapButtonRB, lastButtonStates);
-  setButton(MapButtonLogo, lastButtonStates);
-  setButton(MapButtonA, lastButtonStates);
-  setButton(MapButtonB, lastButtonStates);
-  setButton(MapButtonX, lastButtonStates);
-  setButton(MapButtonY, lastButtonStates);
-  setButton(MapButtonLT, lastButtonStates);
-  setButton(MapButtonRT, lastButtonStates);
+  setButton(MapButtonA, portStates, lastButtonStates);
+  setButton(MapButtonB, portStates, lastButtonStates);
+  setButton(MapButtonX, portStates, lastButtonStates);
+  setButton(MapButtonY, portStates, lastButtonStates);
+  setButton(MapButtonStart, portStates, lastButtonStates);
+  setButton(MapButtonBack, portStates, lastButtonStates);
+  setButton(MapButtonL3, portStates, lastButtonStates);
+  setButton(MapButtonR3, portStates, lastButtonStates);
+  setButton(MapButtonLB, portStates, lastButtonStates);
+  setButton(MapButtonRB, portStates, lastButtonStates);
+  setButton(MapButtonLogo, portStates, lastButtonStates);
+  setButton(MapButtonLT, portStates, lastButtonStates);
+  setButton(MapButtonRT, portStates, lastButtonStates);
 
 #ifdef DEBUG
   uint32_t endTime = micros();
@@ -130,6 +127,8 @@ void loop() {
   parseTime[1] = max(parseTime[1], parseTime[2]);
   printState();
 #endif
+  // TODO: Adjust debounce delay, getting multiple presses on 240Hz display
+  // delayMicroseconds(DEBOUNCE_MICROSECONDS);
 }
 
 #ifdef DEBUG

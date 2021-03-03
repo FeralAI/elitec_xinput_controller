@@ -1,20 +1,22 @@
+#include <stdint.h>
+#include <avr/pgmspace.h>
 #include <XInput.h>
 
 #ifndef _ELITEC_MAPPING_
 #define _ELITEC_MAPPING_
 
-// Input options
 #ifndef USE_JOYSTICKS
 #define USE_JOYSTICKS 0
 #endif
+
 #ifndef USE_ANALOG_TRIGGERS
 #define USE_ANALOG_TRIGGERS 0
 #endif
+
 #ifndef USE_JOYSTICK_EMULATION
 #define USE_JOYSTICK_EMULATION 0
 #endif
 
-// Pin definitions
 #define PIN_JOY_LEFT_X   PF4
 #define PIN_JOY_LEFT_Y   PF5
 #define PIN_JOY_RIGHT_X  PF6
@@ -56,40 +58,40 @@
 #define BUTTON_COUNT 13
 
 struct ButtonToPinMapping {
-  ButtonToPinMapping(uint8_t pi, uint8_t pp, uint8_t b, uint8_t si)
-    : portIndex(pi), portPin(pp), button(b), stateIndex(si) { }
-  uint8_t portIndex;  // The MCU port
-  uint8_t portPin;    // The port pin
-  uint8_t button;     // The XInputControl value
-  uint8_t stateIndex; // The index of the state array
+  constexpr ButtonToPinMapping(uint8_t i, uint8_t p, uint8_t b, uint8_t s)
+    : portIndex(i), portPin(p), button(b), stateIndex(s) { }
+  uint8_t portIndex;
+  uint8_t portPin;
+  uint8_t button;
+  uint8_t stateIndex;
 };
 
-// Dpad mapping
-const ButtonToPinMapping MapDpadUp(PORTB_INDEX, PIN_DPAD_UP, DPAD_UP, 0);
-const ButtonToPinMapping MapDpadDown(PORTB_INDEX, PIN_DPAD_DOWN, DPAD_DOWN, 1);
-const ButtonToPinMapping MapDpadLeft(PORTB_INDEX, PIN_DPAD_LEFT, DPAD_LEFT, 2);
-const ButtonToPinMapping MapDpadRight(PORTB_INDEX, PIN_DPAD_RIGHT, DPAD_RIGHT, 3);
+static const ButtonToPinMapping MapDpadUp(PORTB_INDEX, PIN_DPAD_UP, DPAD_UP, 0);
+static const ButtonToPinMapping MapDpadDown(PORTB_INDEX, PIN_DPAD_DOWN, DPAD_DOWN, 1);
+static const ButtonToPinMapping MapDpadLeft(PORTB_INDEX, PIN_DPAD_LEFT, DPAD_LEFT, 2);
+static const ButtonToPinMapping MapDpadRight(PORTB_INDEX, PIN_DPAD_RIGHT, DPAD_RIGHT, 3);
 
-// Button mapping
-const ButtonToPinMapping MapButtonA(PORTD_INDEX, PIN_BUTTON_A, BUTTON_A, 0);
-const ButtonToPinMapping MapButtonB(PORTE_INDEX, PIN_BUTTON_B, BUTTON_B, 1);
-const ButtonToPinMapping MapButtonX(PORTB_INDEX, PIN_BUTTON_X, BUTTON_X, 2);
-const ButtonToPinMapping MapButtonY(PORTB_INDEX, PIN_BUTTON_Y, BUTTON_Y, 3);
-const ButtonToPinMapping MapButtonLB(PORTB_INDEX, PIN_BUTTON_LB, BUTTON_LB, 4);
-const ButtonToPinMapping MapButtonRB(PORTB_INDEX, PIN_BUTTON_RB, BUTTON_RB, 5);
-const ButtonToPinMapping MapButtonLT(PORTF_INDEX, PIN_BUTTON_LT, TRIGGER_LEFT, 6);
-const ButtonToPinMapping MapButtonRT(PORTF_INDEX, PIN_BUTTON_RT, TRIGGER_RIGHT, 7);
-const ButtonToPinMapping MapButtonL3(PORTD_INDEX, PIN_BUTTON_L3, BUTTON_L3, 8);
-const ButtonToPinMapping MapButtonR3(PORTC_INDEX, PIN_BUTTON_R3, BUTTON_R3, 9);
-const ButtonToPinMapping MapButtonBack(PORTD_INDEX, PIN_BUTTON_BACK, BUTTON_BACK, 10);
-const ButtonToPinMapping MapButtonStart(PORTD_INDEX, PIN_BUTTON_START, BUTTON_START, 11);
-const ButtonToPinMapping MapButtonLogo(PORTC_INDEX, PIN_BUTTON_LOGO, BUTTON_LOGO, 12);
+static const ButtonToPinMapping MapButtonA(PORTD_INDEX, PIN_BUTTON_A, BUTTON_A, 0);
+static const ButtonToPinMapping MapButtonB(PORTE_INDEX, PIN_BUTTON_B, BUTTON_B, 1);
+static const ButtonToPinMapping MapButtonX(PORTB_INDEX, PIN_BUTTON_X, BUTTON_X, 2);
+static const ButtonToPinMapping MapButtonY(PORTB_INDEX, PIN_BUTTON_Y, BUTTON_Y, 3);
+static const ButtonToPinMapping MapButtonStart(PORTD_INDEX, PIN_BUTTON_START, BUTTON_START, 4);
+static const ButtonToPinMapping MapButtonBack(PORTD_INDEX, PIN_BUTTON_BACK, BUTTON_BACK, 5);
+static const ButtonToPinMapping MapButtonL3(PORTD_INDEX, PIN_BUTTON_L3, BUTTON_L3, 6);
+static const ButtonToPinMapping MapButtonR3(PORTC_INDEX, PIN_BUTTON_R3, BUTTON_R3, 7);
+static const ButtonToPinMapping MapButtonLB(PORTB_INDEX, PIN_BUTTON_LB, BUTTON_LB, 8);
+static const ButtonToPinMapping MapButtonRB(PORTB_INDEX, PIN_BUTTON_RB, BUTTON_RB, 9);
+static const ButtonToPinMapping MapButtonLogo(PORTC_INDEX, PIN_BUTTON_LOGO, BUTTON_LOGO, 10);
+static const ButtonToPinMapping MapButtonLT(PORTF_INDEX, PIN_BUTTON_LT, TRIGGER_LEFT, 11);
+static const ButtonToPinMapping MapButtonRT(PORTF_INDEX, PIN_BUTTON_RT, TRIGGER_RIGHT, 12);
 
-// Joystick mapping
-const ButtonToPinMapping MapJoystickLeftX(PORTF_INDEX, PIN_JOY_LEFT_X, JOY_LEFT, 0);
-const ButtonToPinMapping MapJoystickLeftY(PORTF_INDEX, PIN_JOY_LEFT_Y, JOY_LEFT, 1);
-const ButtonToPinMapping MapJoystickRightX(PORTF_INDEX, PIN_JOY_RIGHT_X, JOY_RIGHT, 0);
-const ButtonToPinMapping MapJoystickRightY(PORTF_INDEX, PIN_JOY_RIGHT_Y, JOY_RIGHT, 1);
+static const ButtonToPinMapping MapJoystickLeftX(PORTF_INDEX, PIN_JOY_LEFT_X, JOY_LEFT, 0);
+static const ButtonToPinMapping MapJoystickLeftY(PORTF_INDEX, PIN_JOY_LEFT_Y, JOY_LEFT, 1);
+static const ButtonToPinMapping MapJoystickRightX(PORTF_INDEX, PIN_JOY_RIGHT_X, JOY_RIGHT, 0);
+static const ButtonToPinMapping MapJoystickRightY(PORTF_INDEX, PIN_JOY_RIGHT_Y, JOY_RIGHT, 1);
+
+static const ButtonToPinMapping MapAnalogLT(PORTF_INDEX, PIN_BUTTON_LT, TRIGGER_LEFT, 0);
+static const ButtonToPinMapping MapAnalogRT(PORTF_INDEX, PIN_BUTTON_RT, TRIGGER_RIGHT, 1);
 
 /**
  * Configures all usable pins as inputs.
