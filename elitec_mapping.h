@@ -1,5 +1,3 @@
-#include <stdint.h>
-#include <avr/pgmspace.h>
 #include <XInput.h>
 
 #ifndef _ELITEC_MAPPING_
