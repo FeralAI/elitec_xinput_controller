@@ -1,10 +1,24 @@
-// Elite-C Arcade Stick
-//
-// This sketch handles an arcade stick with 1 4/8-way joystick and 10 digital buttons (14 pins).
-// Enabling the DEBUG flag will output to a 128x32 OLED connected via I2C since serial monitoring is unavailable in XInput mode.
+/******************************************************************************
+ * Elite-C XInput Controller
+ * 
+ * A full XInput controller contains the following inputs:
+ * - 10 + 1 digital buttons
+ * - 4-way directional input
+ * - 2 analog joysticks
+ * - 2 analog/digital triggers
+ * 
+ * This requires a total of 21 pins on the MCU board (15 digital inputs, 6
+ * analog inputs), however the common Pro Micro variants only contain 18
+ * usable pins, and up to 20 with some modifications. The Elite-C not only
+ * offers a USB-C interface, it provides 24 usable pins. That is enough to
+ * cover each input without using shift registers or GPIO expanders while also
+ * leaving a few open pins for other purposes.
+ * 
+ * Enabling the DEBUG flag will output to a 128x32 OLED connected via I2C
+ * since serial monitoring is unavailable in XInput mode.
+ *****************************************************************************/
 
 //#define DEBUG
-#define DEBOUNCE_MICROSECONDS 1
 #define USE_JOYSTICKS 0
 #define USE_ANALOG_TRIGGERS 0
 #define USE_JOYSTICK_EMULATION 0
@@ -19,12 +33,12 @@
 #include "limits.h"
 
 // State variables
-uint8_t portStates[PORT_COUNT];             // The current port register values
-uint8_t dpadStates[4] = { };                // The dpad input states
-uint8_t buttonStates[BUTTON_COUNT] = { };   // The button states
-uint8_t triggerStates[2] = { };             // The analog trigger states
-uint16_t joystickStatesX[2] = { };          // The left joystick states
-uint16_t joystickStatesY[2] = { };          // The right joystick states
+uint8_t portStates[PORT_COUNT];           // The current port register values
+uint8_t dpadStates[4] = { };              // The dpad input states
+uint8_t buttonStates[BUTTON_COUNT] = { }; // The button states
+uint8_t triggerStates[2] = { };           // The analog trigger states
+uint16_t joystickStatesX[2] = { };        // The left joystick states
+uint16_t joystickStatesY[2] = { };        // The right joystick states
 #ifdef DEBUG
 uint32_t readTime[3] = { ULONG_MAX, 0, 0 };
 uint32_t parseTime[3] = { ULONG_MAX, 0, 0 };
@@ -36,6 +50,7 @@ inline void setButton(ButtonToPinMapping mapping, uint8_t lastButtonStates[]) __
 
 void setButton(ButtonToPinMapping mapping, uint8_t lastButtonStates[]) {
   buttonStates[mapping.stateIndex] = (portStates[mapping.portIndex] >> mapping.portPin & 1);
+  // Only set button state if changed
   if (buttonStates[mapping.stateIndex] != lastButtonStates[mapping.stateIndex])
     XInput.setButton(mapping.button, !buttonStates[mapping.stateIndex]);
 }
@@ -76,6 +91,8 @@ void loop() {
   dpadStates[MapDpadDown.stateIndex]  = (portStates[MapDpadDown.portIndex] >> MapDpadDown.portPin & 1);
   dpadStates[MapDpadLeft.stateIndex]  = (portStates[MapDpadLeft.portIndex] >> MapDpadLeft.portPin & 1);
   dpadStates[MapDpadRight.stateIndex] = (portStates[MapDpadRight.portIndex] >> MapDpadRight.portPin & 1);
+  
+  // Only set dpad inputs if changed
   if (memcmp(lastDpadStates, dpadStates, sizeof(lastDpadStates)) != 0) {
     XInput.setDpad(
       dpadStates[MapDpadUp.stateIndex] == 0,
@@ -113,8 +130,6 @@ void loop() {
   parseTime[1] = max(parseTime[1], parseTime[2]);
   printState();
 #endif
-  // TODO: Adjust debounce delay, getting multiple presses on 240Hz display
-  // delayMicroseconds(DEBOUNCE_MICROSECONDS);
 }
 
 #ifdef DEBUG

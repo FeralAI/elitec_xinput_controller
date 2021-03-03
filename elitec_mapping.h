@@ -58,24 +58,22 @@
 #define BUTTON_COUNT 13
 
 struct ButtonToPinMapping {
-  constexpr ButtonToPinMapping(uint8_t i, uint8_t p, uint8_t b, uint8_t s)
-    : portIndex(i), portPin(p), bitmask(BuildMask(p)), button(b), stateIndex(s) { }
+  ButtonToPinMapping(uint8_t pi, uint8_t pp, uint8_t b, uint8_t si)
+    : portIndex(pi), portPin(pp), button(b), stateIndex(si) { }
   uint8_t portIndex;
   uint8_t portPin;
-  uint8_t bitmask;
   uint8_t button;
   uint8_t stateIndex;
-
-private:
-  constexpr static uint8_t BuildMask(uint8_t offset) {
-    return (1 << offset);
-  }
 };
 
 const ButtonToPinMapping MapDpadUp(PORTB_INDEX, PIN_DPAD_UP, DPAD_UP, 0);
 const ButtonToPinMapping MapDpadDown(PORTB_INDEX, PIN_DPAD_DOWN, DPAD_DOWN, 1);
 const ButtonToPinMapping MapDpadLeft(PORTB_INDEX, PIN_DPAD_LEFT, DPAD_LEFT, 2);
 const ButtonToPinMapping MapDpadRight(PORTB_INDEX, PIN_DPAD_RIGHT, DPAD_RIGHT, 3);
+const ButtonToPinMapping MapButtonA(PORTD_INDEX, PIN_BUTTON_A, BUTTON_A, 0);
+const ButtonToPinMapping MapButtonB(PORTE_INDEX, PIN_BUTTON_B, BUTTON_B, 1);
+const ButtonToPinMapping MapButtonX(PORTB_INDEX, PIN_BUTTON_X, BUTTON_X, 2);
+const ButtonToPinMapping MapButtonY(PORTB_INDEX, PIN_BUTTON_Y, BUTTON_Y, 3);
 const ButtonToPinMapping MapButtonStart(PORTD_INDEX, PIN_BUTTON_START, BUTTON_START, 4);
 const ButtonToPinMapping MapButtonBack(PORTD_INDEX, PIN_BUTTON_BACK, BUTTON_BACK, 5);
 const ButtonToPinMapping MapButtonL3(PORTD_INDEX, PIN_BUTTON_L3, BUTTON_L3, 6);
@@ -85,11 +83,6 @@ const ButtonToPinMapping MapButtonRB(PORTB_INDEX, PIN_BUTTON_RB, BUTTON_RB, 9);
 const ButtonToPinMapping MapButtonLogo(PORTC_INDEX, PIN_BUTTON_LOGO, BUTTON_LOGO, 10);
 const ButtonToPinMapping MapButtonLT(PORTF_INDEX, PIN_BUTTON_LT, TRIGGER_LEFT, 11);
 const ButtonToPinMapping MapButtonRT(PORTF_INDEX, PIN_BUTTON_RT, TRIGGER_RIGHT, 12);
-
-const ButtonToPinMapping MapButtonA(PORTD_INDEX, PIN_BUTTON_A, BUTTON_A, 0);
-const ButtonToPinMapping MapButtonB(PORTE_INDEX, PIN_BUTTON_B, BUTTON_B, 1);
-const ButtonToPinMapping MapButtonX(PORTB_INDEX, PIN_BUTTON_X, BUTTON_X, 2);
-const ButtonToPinMapping MapButtonY(PORTB_INDEX, PIN_BUTTON_Y, BUTTON_Y, 3);
 
 const ButtonToPinMapping MapJoystickLeftX(PORTF_INDEX, PIN_JOY_LEFT_X, JOY_LEFT, 0);
 const ButtonToPinMapping MapJoystickLeftY(PORTF_INDEX, PIN_JOY_LEFT_Y, JOY_LEFT, 1);
