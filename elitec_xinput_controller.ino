@@ -12,6 +12,9 @@
  * 
  * Enabling the DEBUG flag will output to a 128x32 OLED connected via I2C
  * since serial monitoring is unavailable in XInput mode.
+ * 
+ * If building from source, make sure you are using the -O3 or -Ofast
+ * optimization flags to ensure the fastest performance.
  *****************************************************************************/
 
 #define DEBUG
@@ -22,7 +25,6 @@
 
 #ifdef DEBUG
 #include "ssd1306.h"
-#include "ssd1306_console.h"
 #endif
 #include <XInput.h>
 #include "elitec_mapping.h"
@@ -45,7 +47,7 @@ inline void setButton(ButtonToPinMapping mapping, uint8_t portStates[], uint8_t 
 void setButton(ButtonToPinMapping mapping, uint8_t portStates[], uint8_t lastButtonStates[]) {
   buttonStates[mapping.stateIndex] = (portStates[mapping.portIndex] >> mapping.portPin & 1);
   if (buttonStates[mapping.stateIndex] != lastButtonStates[mapping.stateIndex])
-    XInput.setButton(mapping.button, !buttonStates[mapping.stateIndex]);
+    XInput.setButton(mapping.button, buttonStates[mapping.stateIndex] == 0);
 }
 
 void setup() {
@@ -97,10 +99,10 @@ void loop() {
     XInput.setDpad(up, down, left, right, false);
 #else
     XInput.setDpad(
-      !dpadStates[MapDpadUp.stateIndex],
-      !dpadStates[MapDpadDown.stateIndex],
-      !dpadStates[MapDpadLeft.stateIndex],
-      !dpadStates[MapDpadRight.stateIndex],
+      dpadStates[MapDpadUp.stateIndex] == 0,
+      dpadStates[MapDpadDown.stateIndex] == 0,
+      dpadStates[MapDpadLeft.stateIndex] == 0,
+      dpadStates[MapDpadRight.stateIndex] == 0,
       false
     );
 #endif
