@@ -28,7 +28,7 @@
 #define PIN_BUTTON_X     PB4
 #define PIN_BUTTON_Y     PB5
 #define PIN_BUTTON_LB    PB7
-#define PIN_BUTTON_RB    PB0
+#define PIN_BUTTON_RB    PD5
 #define PIN_BUTTON_LT    PF1
 #define PIN_BUTTON_RT    PF0
 #define PIN_BUTTON_BACK  PD3
@@ -85,7 +85,7 @@ static const ButtonToPinMapping MapButtonBack(PORTD_INDEX, PIN_BUTTON_BACK, BUTT
 static const ButtonToPinMapping MapButtonL3(PORTD_INDEX, PIN_BUTTON_L3, BUTTON_L3, 6);
 static const ButtonToPinMapping MapButtonR3(PORTC_INDEX, PIN_BUTTON_R3, BUTTON_R3, 7);
 static const ButtonToPinMapping MapButtonLB(PORTB_INDEX, PIN_BUTTON_LB, BUTTON_LB, 8);
-static const ButtonToPinMapping MapButtonRB(PORTB_INDEX, PIN_BUTTON_RB, BUTTON_RB, 9);
+static const ButtonToPinMapping MapButtonRB(PORTD_INDEX, PIN_BUTTON_RB, BUTTON_RB, 9);
 static const ButtonToPinMapping MapButtonLogo(PORTC_INDEX, PIN_BUTTON_LOGO, BUTTON_LOGO, 10);
 static const ButtonToPinMapping MapButtonLT(PORTF_INDEX, PIN_BUTTON_LT, TRIGGER_LEFT, 11);
 static const ButtonToPinMapping MapButtonRT(PORTF_INDEX, PIN_BUTTON_RT, TRIGGER_RIGHT, 12);

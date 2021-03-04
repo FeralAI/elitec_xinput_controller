@@ -54,16 +54,14 @@ The Elite-C is labelled with the port pins instead of typical Arduino pin number
 | Dpad Left     | PB2      | No     |   | Right Stick X | PF6      | Yes    |
 | Dpad Right    | PB6      | No     |   | Right Stick Y | PF7      | Yes    |
 | A             | PD7      | No     |   | Left Bumper   | PB7      | No     |
-| B             | PE6      | No     |   | Right Bumper  | PB0      | No     |
+| B             | PE6      | No     |   | Right Bumper  | PD5      | No     |
 | X             | PB4      | No     |   | Left Trigger  | PF1      | Yes    |
 | Y             | PB5      | No     |   | Right Trigger | PF0      | Yes    |
 | Back          | PD3      | No     |   | L3            | PD4      | No     |
 | Start         | PD2      | No     |   | R3            | PC6      | No     |
 | Home/Logo     | PC7      | No     |
 
-> NOTE: PD5 was originally used for Right Bumper, however both Elite-C boards I have seem to have issues using that pin (stays high after activate, floats a bit, activates randomly). This may be a board configuration issue I haven't worked through yet since that is the TX pin on a standard Pro Micro. PB0 is used instead until that issue is resolved.
-
-## Building and Flashing
+## Development
 
 ### Dependencies
 
@@ -71,22 +69,20 @@ This sketch depends on the following libraries:
 
 * [Arduino XInput Library](https://github.com/dmadison/ArduinoXInput)
 * [SSD1306 Display Driver](https://github.com/lexus2k/ssd1306) (only for debug builds)
-* The Elite-C board package (not quite ready yet)
 
-### Building
+You will also need the following boards packages for the Arduino IDE:
 
-Load the sketch into Arduino IDE and make sure you have the dependencies installed. Use the `Sketch > Export compiled Binary` option from the menu to output the compiled `.hex` file to the sketch folder.
+* [XInput USB Core for Arduino AVR](https://github.com/dmadison/ArduinoXInput_AVR)
+* [Elite-C Board w/XInput](https://github.com/jskuby/ArduinoXInput_EliteC)
 
-## Flashing
+### Building and Flashing
 
-Momentarily pull the reset pin on the Elite-C to ground to enter DFU bootloader, then program the `.hex` to the Elite-C flash via the Atmel FLIP application.
+* Load the sketch into Arduino IDE and make sure you have the dependencies installed.
+* Momentarily pull the reset pin on the Elite-C to ground to enter DFU bootloader.
+
+The sketch can be built and uploaded directly from the Arduino IDE, however this will require a hard reset of the device in order to start the XInput program. Another option is to use the `Sketch > Export compiled Binary` option from the menu to output the compiled `.hex` file to the sketch folder, then upload the program `.hex` to the Elite-C flash via the Atmel FLIP application.
 
 ## TODOs
 
 * Test analog reads for sticks and triggers
-* Boards file
-  * Create XInput boards repo for Elite-C
-  * Evaluate options (was copied from Sparkfun Pro Micro board config)
-  * Look at STM32 boards for Arduino IDE DFU example
 * Evaluate pin remapping
-* Figure out what's up with PD5 flakiness
