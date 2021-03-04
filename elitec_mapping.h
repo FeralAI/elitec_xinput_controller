@@ -13,7 +13,19 @@
 #define USE_ANALOG_TRIGGERS 0
 #endif
 
-#define ADC_MAX 1023 // 10 bit
+#ifndef ADC_JOYSTICK_DEADZONE
+#define ADC_JOYSTICK_DEADZONE 60 // ~15%
+#endif
+
+#ifndef ADC_OUTER_DEADZONE
+#define ADC_OUTER_DEADZONE 20 // Reduce some noise at the edges
+#endif
+
+#define ADC_CENTER_VALUE 511
+#define ADC_JOYSTICK_DEADZONE_MIN (ADC_CENTER_VALUE - ADC_JOYSTICK_DEADZONE)
+#define ADC_JOYSTICK_DEADZONE_MAX (ADC_CENTER_VALUE + ADC_JOYSTICK_DEADZONE)
+#define ADC_MIN (0UL + ADC_OUTER_DEADZONE)
+#define ADC_MAX (1023UL - ADC_OUTER_DEADZONE) // 10 bit
 
 #define PIN_JOY_LEFT_X   PF4
 #define PIN_JOY_LEFT_Y   PF5
@@ -65,12 +77,13 @@
 struct ButtonToPinMapping {
   constexpr ButtonToPinMapping(uint8_t i, uint8_t p, XInputControl b, uint8_t s)
     : portIndex(i), portPin(p), button(b), stateIndex(s) { }
-  uint8_t portIndex;
-  uint8_t portPin;
-  XInputControl button;
-  uint8_t stateIndex;
+  uint8_t portIndex;    // The index of the port in the cached inputs
+  uint8_t portPin;      // The port pin/index
+  XInputControl button; // The XInputControl enum value
+  uint8_t stateIndex;   // The index in the related state array
 };
 
+// Same order as `tx` definitions in XInput.cpp
 static const ButtonToPinMapping MapDpadUp(PORTB_INDEX, PIN_DPAD_UP, DPAD_UP, 0);
 static const ButtonToPinMapping MapDpadDown(PORTB_INDEX, PIN_DPAD_DOWN, DPAD_DOWN, 1);
 static const ButtonToPinMapping MapDpadLeft(PORTB_INDEX, PIN_DPAD_LEFT, DPAD_LEFT, 2);
@@ -92,8 +105,8 @@ static const ButtonToPinMapping MapButtonRT(PORTF_INDEX, PIN_BUTTON_RT, TRIGGER_
 
 static const ButtonToPinMapping MapJoystickLeftX(PORTF_INDEX, PIN_JOY_LEFT_X, JOY_LEFT, 0);
 static const ButtonToPinMapping MapJoystickLeftY(PORTF_INDEX, PIN_JOY_LEFT_Y, JOY_LEFT, 1);
-static const ButtonToPinMapping MapJoystickRightX(PORTF_INDEX, PIN_JOY_RIGHT_X, JOY_RIGHT, 0);
-static const ButtonToPinMapping MapJoystickRightY(PORTF_INDEX, PIN_JOY_RIGHT_Y, JOY_RIGHT, 1);
+static const ButtonToPinMapping MapJoystickRightX(PORTF_INDEX, PIN_JOY_RIGHT_X, JOY_RIGHT, 2);
+static const ButtonToPinMapping MapJoystickRightY(PORTF_INDEX, PIN_JOY_RIGHT_Y, JOY_RIGHT, 3);
 
 static const ButtonToPinMapping MapAnalogLT(PORTF_INDEX, PIN_BUTTON_LT, TRIGGER_LEFT, 0);
 static const ButtonToPinMapping MapAnalogRT(PORTF_INDEX, PIN_BUTTON_RT, TRIGGER_RIGHT, 1);
@@ -124,16 +137,31 @@ void configureInputs() {
   PORTF = PORTF | PORTF_INPUT_MASK;
 #endif
 
-  XInput.setJoystickRange(0, ADC_MAX);
-  XInput.setTriggerRange(0, ADC_MAX);
+  // Use fast ADC 1MHz
+  ADCSRA = (ADCSRA & 0xF80) | 0x04;
+
+  XInput.setJoystickRange(ADC_MIN, ADC_MAX);
+  XInput.setTriggerRange(ADC_MIN, ADC_MAX);
+}
+
+/**
+ * Applies an inner deadzone to an analog input, intended for joysticks
+ */
+inline uint16_t applyJoystickDeadzone(uint16_t value) __attribute__((always_inline));
+
+uint16_t applyJoystickDeadzone(uint16_t value) {
+  if (value > ADC_JOYSTICK_DEADZONE_MIN && value < ADC_JOYSTICK_DEADZONE_MAX)
+    return ADC_CENTER_VALUE;
+
+  return value;
 }
 
 /**
  * Retrieves the input states from all ports
  */
-inline void getInputStates(uint8_t portStates[]) __attribute__((always_inline));
+inline void getPortStates(uint8_t portStates[]) __attribute__((always_inline));
 
-void getInputStates(uint8_t portStates[]) {
+void getPortStates(uint8_t portStates[]) {
   portStates[PORTB_INDEX] = PINB;
   portStates[PORTC_INDEX] = PINC;
   portStates[PORTD_INDEX] = PIND;

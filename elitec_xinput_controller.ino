@@ -7,9 +7,6 @@
  * - 2 analog joysticks (16-bit)
  * - 2 analog/digital triggers (8-bit)
  * 
- * This sketch currently handles all digital inputs, though all required analog
- * pins are currently allocated until analog reads are implemented.
- * 
  * Enabling the DEBUG flag will output to a 128x32 OLED connected via I2C
  * since serial monitoring is unavailable in XInput mode.
  * 
@@ -18,8 +15,8 @@
  *****************************************************************************/
 
 //#define DEBUG
-#define USE_JOYSTICKS 1
-#define USE_ANALOG_TRIGGERS 1
+#define USE_JOYSTICKS 0
+#define USE_ANALOG_TRIGGERS 0
 #define USE_SOCD 1
 
 #ifdef DEBUG
@@ -53,23 +50,23 @@ void setButton(ButtonToPinMapping mapping, uint8_t portStates[], uint8_t lastBut
 }
 
 #if USE_JOYSTICKS
-inline void setJoystickValues(ButtonToPinMapping mappingX, ButtonToPinMapping mappingY, uint16_t valueX, uint16_t valueY, uint16_t states[], uint16_t lastStates[]) __attribute__((always_inline));
+inline void setJoystickValues(ButtonToPinMapping mappingX, ButtonToPinMapping mappingY, uint16_t valueX, uint16_t valueY, uint16_t lastStates[]) __attribute__((always_inline));
 
-void setJoystickValues(ButtonToPinMapping mappingX, ButtonToPinMapping mappingY, uint16_t valueX, uint16_t valueY, uint16_t states[], uint16_t lastStates[]) {
-  states[mappingX.stateIndex] = valueX;
-  states[mappingY.stateIndex] = valueY;
-  if (valueX != lastStates[mappingX.stateIndex] || valueY != lastStates[mappingY.stateIndex])
-    XInput.setJoystick(mappingX.button, valueX, valueY);
+void setJoystickValues(ButtonToPinMapping mappingX, ButtonToPinMapping mappingY, uint16_t valueX, uint16_t valueY, uint16_t lastStates[]) {
+  joystickStates[mappingX.stateIndex] = applyJoystickDeadzone(valueX);
+  joystickStates[mappingY.stateIndex] = applyJoystickDeadzone(valueY);
+  if (joystickStates[mappingX.stateIndex] != lastStates[mappingX.stateIndex] || joystickStates[mappingY.stateIndex] != lastStates[mappingY.stateIndex])
+    XInput.setJoystick(mappingX.button, joystickStates[mappingX.stateIndex], joystickStates[mappingY.stateIndex]);
 }
 #endif
 
 #if USE_ANALOG_TRIGGERS
-inline void setTriggerValue(ButtonToPinMapping mapping, uint8_t value, uint8_t states[], uint8_t lastStates[]) __attribute__((always_inline));
+inline void setTriggerValue(ButtonToPinMapping mapping, uint8_t value, uint8_t lastStates[]) __attribute__((always_inline));
 
-void setTriggerValue(ButtonToPinMapping mapping, uint8_t value, uint8_t states[], uint8_t lastStates[]) {
-  states[mapping.stateIndex] = value;
-  if (value != lastStates[mapping.stateIndex])
-    XInput.setTrigger(mapping.button, value);
+void setTriggerValue(ButtonToPinMapping mapping, uint8_t value, uint8_t lastStates[]) {
+  triggerStates[mapping.stateIndex] = value;
+  if (triggerStates[mapping.stateIndex] != lastStates[mapping.stateIndex])
+    XInput.setTrigger(mapping.button, triggerStates[mapping.stateIndex]);
 }
 #endif
 
@@ -77,6 +74,10 @@ void setup() {
   configureInputs();
 #ifdef DEBUG
   setupDisplay();
+#endif
+#if USE_JOYSTICKS || USE_ANALOG_TRIGGERS
+  // This will prevent message backlog from constantly sending analog events
+  XInput.setAutoSend(false);
 #endif
 }
 
@@ -88,7 +89,7 @@ void loop() {
 
   // Read logic takes 1-12µs
   uint8_t portStates[PORT_COUNT];
-  getInputStates(portStates);
+  getPortStates(portStates);
 
 #ifdef DEBUG
   readTime[2] = micros() - startTime;
@@ -149,8 +150,8 @@ void loop() {
 
   // Trigger values
 #if USE_ANALOG_TRIGGERS
-  setTriggerValue(MapAnalogLT, analogRead(PIN_ANALOG_LT), triggerStates, lastTriggerStates);
-  setTriggerValue(MapAnalogRT, analogRead(PIN_ANALOG_RT), triggerStates, lastTriggerStates);
+  setTriggerValue(MapAnalogLT, analogRead(PIN_ANALOG_LT), lastTriggerStates);
+  setTriggerValue(MapAnalogRT, analogRead(PIN_ANALOG_RT), lastTriggerStates);
 #else
   setButton(MapButtonLT, portStates, lastButtonStates);
   setButton(MapButtonRT, portStates, lastButtonStates);
@@ -158,8 +159,13 @@ void loop() {
 
   // Joystick values
 #if USE_JOYSTICKS
-  setJoystickValues(MapJoystickLeftX, MapJoystickLeftY, analogRead(PIN_ANALOG_LX), analogRead(PIN_ANALOG_LY), joystickStates, lastJoystickStates);
-  setJoystickValues(MapJoystickRightX, MapJoystickRightY, analogRead(PIN_ANALOG_RX), analogRead(PIN_ANALOG_RY), joystickStates, lastJoystickStates);
+  setJoystickValues(MapJoystickLeftX, MapJoystickLeftY, analogRead(PIN_ANALOG_LX), analogRead(PIN_ANALOG_LY), lastJoystickStates);
+  setJoystickValues(MapJoystickRightX, MapJoystickRightY, analogRead(PIN_ANALOG_RX), analogRead(PIN_ANALOG_RY), lastJoystickStates);
+#endif
+
+#if USE_JOYSTICKS || USE_ANALOG_TRIGGERS
+  // This will prevent message backlog from constantly sending analog events
+  XInput.send();
 #endif
 
 #ifdef DEBUG
@@ -185,19 +191,36 @@ void setupDisplay() {
 
 void printState() {
   char buf[20];
+
   sprintf(buf, "R: %lu %lu %lu", readTime[0], readTime[1], readTime[2]);
   sprintf(buf, "%-20s", buf);
   ssd1306_printFixed(0, 0, buf, STYLE_NORMAL);
+  
   memset(buf, 0, sizeof(buf));
   sprintf(buf, "P: %lu %lu %lu", parseTime[0], parseTime[1], parseTime[2]);
   sprintf(buf, "%-20s", buf);
   ssd1306_printFixed(0, 8, buf, STYLE_NORMAL);
+  
   memset(buf, 0, sizeof(buf));
   sprintf(buf, "L: %lu %lu %lu", loopTime[0], loopTime[1], loopTime[2]);
   sprintf(buf, "%-20s", buf);
   ssd1306_printFixed(0, 16, buf, STYLE_NORMAL);
-  memset(buf, 0, sizeof(buf));
+  
+//  sprintf(buf, "L: %lu %lu %lu", loopTime[0], loopTime[1], loopTime[2]);
+//  sprintf(buf, "%-20s", buf);
+//  ssd1306_printFixed(0, 0, buf, STYLE_NORMAL);
 
+//  memset(buf, 0, sizeof(buf));
+//  sprintf(buf, "J: %u %u %u %u", joystickStates[0], joystickStates[1], joystickStates[2], joystickStates[3]);
+//  sprintf(buf, "%-21s", buf);
+//  ssd1306_printFixed(0, 8, buf, STYLE_NORMAL);
+
+//  memset(buf, 0, sizeof(buf));
+//  sprintf(buf, "T: %u %u", triggerStates[0], triggerStates[1]);
+//  sprintf(buf, "%-21s", buf);
+//  ssd1306_printFixed(0, 16, buf, STYLE_NORMAL);
+
+  memset(buf, 0, sizeof(buf));
   buf[0] = 'S';
   buf[1] = ':';
   buf[2] = ' ';
