@@ -1,5 +1,5 @@
 /******************************************************************************
- * Elite-C XInput Controller
+ * Elite-C XInput Controller v0.1.0
  * 
  * A full XInput controller contains the following inputs:
  * - 10 + 1 digital buttons
@@ -17,10 +17,9 @@
  * optimization flags to ensure the fastest performance.
  *****************************************************************************/
 
-#define DEBUG
-#define USE_JOYSTICKS 0
-#define USE_ANALOG_TRIGGERS 0
-#define USE_JOYSTICK_EMULATION 0
+//#define DEBUG
+#define USE_JOYSTICKS 1
+#define USE_ANALOG_TRIGGERS 1
 #define USE_SOCD 1
 
 #ifdef DEBUG
@@ -33,9 +32,12 @@
 // State variables
 uint8_t dpadStates[4] = { };              // The dpad input states
 uint8_t buttonStates[BUTTON_COUNT] = { }; // The button states
+#if USE_JOYSTICKS
+uint16_t joystickStates[4] = { };         // The joystick states: 0 = Lx, 1 = Ly, 2 = Rx, 3 = Ry
+#endif
+#if USE_ANALOG_TRIGGERS
 uint8_t triggerStates[2] = { };           // The analog trigger states
-uint16_t joystickStatesX[2] = { };        // The left joystick states
-uint16_t joystickStatesY[2] = { };        // The right joystick states
+#endif
 #ifdef DEBUG
 uint32_t readTime[3] = { ULONG_MAX, 0, 0 };
 uint32_t parseTime[3] = { ULONG_MAX, 0, 0 };
@@ -50,6 +52,27 @@ void setButton(ButtonToPinMapping mapping, uint8_t portStates[], uint8_t lastBut
     XInput.setButton(mapping.button, buttonStates[mapping.stateIndex] == 0);
 }
 
+#if USE_JOYSTICKS
+inline void setJoystickValues(ButtonToPinMapping mappingX, ButtonToPinMapping mappingY, uint16_t valueX, uint16_t valueY, uint16_t states[], uint16_t lastStates[]) __attribute__((always_inline));
+
+void setJoystickValues(ButtonToPinMapping mappingX, ButtonToPinMapping mappingY, uint16_t valueX, uint16_t valueY, uint16_t states[], uint16_t lastStates[]) {
+  states[mappingX.stateIndex] = valueX;
+  states[mappingY.stateIndex] = valueY;
+  if (valueX != lastStates[mappingX.stateIndex] || valueY != lastStates[mappingY.stateIndex])
+    XInput.setJoystick(mappingX.button, valueX, valueY);
+}
+#endif
+
+#if USE_ANALOG_TRIGGERS
+inline void setTriggerValue(ButtonToPinMapping mapping, uint8_t value, uint8_t states[], uint8_t lastStates[]) __attribute__((always_inline));
+
+void setTriggerValue(ButtonToPinMapping mapping, uint8_t value, uint8_t states[], uint8_t lastStates[]) {
+  states[mapping.stateIndex] = value;
+  if (value != lastStates[mapping.stateIndex])
+    XInput.setTrigger(mapping.button, value);
+}
+#endif
+
 void setup() {
   configureInputs();
 #ifdef DEBUG
@@ -63,7 +86,7 @@ void loop() {
   uint32_t startTime = loopStartTime;
 #endif
 
-  // Read logic takes 4-16µs
+  // Read logic takes 1-12µs
   uint8_t portStates[PORT_COUNT];
   getInputStates(portStates);
 
@@ -74,29 +97,32 @@ void loop() {
 
   // Cache previous states for this loop
   uint8_t lastDpadStates[4];
-  uint8_t lastButtonStates[BUTTON_COUNT];
   memcpy(lastDpadStates, dpadStates, sizeof(lastDpadStates));
+  uint8_t lastButtonStates[BUTTON_COUNT];
   memcpy(lastButtonStates, buttonStates, sizeof(lastButtonStates));
+#if USE_JOYSTICKS
+  uint16_t lastJoystickStates[4];
+  memcpy(lastJoystickStates, joystickStates, sizeof(lastJoystickStates));
+#endif
+#if USE_ANALOG_TRIGGERS
+  uint8_t lastTriggerStates[2];
+  memcpy(lastTriggerStates, triggerStates, sizeof(lastTriggerStates));
+#endif
 
-  // Get/set directional inputs
+  // Dpad values
   dpadStates[MapDpadUp.stateIndex]    = (portStates[MapDpadUp.portIndex] >> MapDpadUp.portPin & 1);
   dpadStates[MapDpadDown.stateIndex]  = (portStates[MapDpadDown.portIndex] >> MapDpadDown.portPin & 1);
   dpadStates[MapDpadLeft.stateIndex]  = (portStates[MapDpadLeft.portIndex] >> MapDpadLeft.portPin & 1);
   dpadStates[MapDpadRight.stateIndex] = (portStates[MapDpadRight.portIndex] >> MapDpadRight.portPin & 1);
   if (memcmp(lastDpadStates, dpadStates, sizeof(lastDpadStates)) != 0) {
 #if USE_SOCD
-    bool up = !dpadStates[MapDpadUp.stateIndex];
-    bool down = !dpadStates[MapDpadDown.stateIndex];
-    bool left = !dpadStates[MapDpadLeft.stateIndex];
-    bool right = !dpadStates[MapDpadRight.stateIndex];
-    if (up && down) {
-      down = false;
-    }
-    if (left && right) {
-      left = false;
-      right = false;
-    }
-    XInput.setDpad(up, down, left, right, false);
+    XInput.setDpad(
+      dpadStates[MapDpadUp.stateIndex] == 0,
+      dpadStates[MapDpadDown.stateIndex] == 0,
+      dpadStates[MapDpadLeft.stateIndex] == 0,
+      dpadStates[MapDpadRight.stateIndex] == 0,
+      true
+    );
 #else
     XInput.setDpad(
       dpadStates[MapDpadUp.stateIndex] == 0,
@@ -108,7 +134,7 @@ void loop() {
 #endif
   }
 
-  // Get/set button inputs
+  // Button values
   setButton(MapButtonA, portStates, lastButtonStates);
   setButton(MapButtonB, portStates, lastButtonStates);
   setButton(MapButtonX, portStates, lastButtonStates);
@@ -120,8 +146,21 @@ void loop() {
   setButton(MapButtonLB, portStates, lastButtonStates);
   setButton(MapButtonRB, portStates, lastButtonStates);
   setButton(MapButtonLogo, portStates, lastButtonStates);
+
+  // Trigger values
+#if USE_ANALOG_TRIGGERS
+  setTriggerValue(MapAnalogLT, analogRead(PIN_ANALOG_LT), triggerStates, lastTriggerStates);
+  setTriggerValue(MapAnalogRT, analogRead(PIN_ANALOG_RT), triggerStates, lastTriggerStates);
+#else
   setButton(MapButtonLT, portStates, lastButtonStates);
   setButton(MapButtonRT, portStates, lastButtonStates);
+#endif
+
+  // Joystick values
+#if USE_JOYSTICKS
+  setJoystickValues(MapJoystickLeftX, MapJoystickLeftY, analogRead(PIN_ANALOG_LX), analogRead(PIN_ANALOG_LY), joystickStates, lastJoystickStates);
+  setJoystickValues(MapJoystickRightX, MapJoystickRightY, analogRead(PIN_ANALOG_RX), analogRead(PIN_ANALOG_RY), joystickStates, lastJoystickStates);
+#endif
 
 #ifdef DEBUG
   uint32_t endTime = micros();
@@ -164,8 +203,8 @@ void printState() {
   buf[2] = ' ';
   for (int i = 3; i < 7; i++)
     buf[i] = dpadStates[i - 3] ? '0' : '1';
-  for (int i = 7; i < 20; i++)
+  for (int i = 7; i < 7 + BUTTON_COUNT; i++)
     buf[i] = buttonStates[i - 7] ? '0' : '1';
-  ssd1306_printFixed(0, 24, buf, STYLE_NORMAL);     
+  ssd1306_printFixed(0, 24, buf, STYLE_NORMAL);
 }
 #endif

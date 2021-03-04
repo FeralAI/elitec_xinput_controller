@@ -13,9 +13,7 @@
 #define USE_ANALOG_TRIGGERS 0
 #endif
 
-#ifndef USE_JOYSTICK_EMULATION
-#define USE_JOYSTICK_EMULATION 0
-#endif
+#define ADC_MAX 1023 // 10 bit
 
 #define PIN_JOY_LEFT_X   PF4
 #define PIN_JOY_LEFT_Y   PF5
@@ -39,6 +37,13 @@
 #define PIN_BUTTON_L3    PD4
 #define PIN_BUTTON_R3    PC6
 
+#define PIN_ANALOG_LX A3
+#define PIN_ANALOG_LY A2
+#define PIN_ANALOG_RX A1
+#define PIN_ANALOG_RY A0
+#define PIN_ANALOG_LT A4
+#define PIN_ANALOG_RT A5
+
 // Input masks for Elite-C
 // PD0 - 3/SCL, PD1 - 2/SDA are used for I2C communication, exclude for now
 #define PORTB_INPUT_MASK 0b11111111
@@ -58,11 +63,11 @@
 #define BUTTON_COUNT 13
 
 struct ButtonToPinMapping {
-  constexpr ButtonToPinMapping(uint8_t i, uint8_t p, uint8_t b, uint8_t s)
+  constexpr ButtonToPinMapping(uint8_t i, uint8_t p, XInputControl b, uint8_t s)
     : portIndex(i), portPin(p), button(b), stateIndex(s) { }
   uint8_t portIndex;
   uint8_t portPin;
-  uint8_t button;
+  XInputControl button;
   uint8_t stateIndex;
 };
 
@@ -109,7 +114,18 @@ void configureInputs() {
   PORTC = PORTC | PORTC_INPUT_MASK;
   PORTD = PORTD | PORTD_INPUT_MASK;
   PORTE = PORTE | PORTE_INPUT_MASK;
+#if USE_ANALOG_TRIGGERS && USE_JOYSTICKS
+  PORTF = PORTF | (PORTF_INPUT_MASK & ~(0 | (1 << PIN_JOY_LEFT_X) | (1 << PIN_JOY_LEFT_Y) | (1 << PIN_JOY_RIGHT_X) | (1 << PIN_JOY_RIGHT_Y) | (1 << PIN_BUTTON_LT) | (1 << PIN_BUTTON_RT)));
+#elif USE_ANALOG_TRIGGERS
+  PORTF = PORTF | (PORTF_INPUT_MASK & ~(0 | (1 << PIN_BUTTON_LT) | (1 << PIN_BUTTON_RT)));
+#elif USE_JOYSTICKS
+  PORTF = PORTF | (PORTF_INPUT_MASK & ~(0 | (1 << PIN_JOY_LEFT_X) | (1 << PIN_JOY_LEFT_Y) | (1 << PIN_JOY_RIGHT_X) | (1 << PIN_JOY_RIGHT_Y)));
+#else
   PORTF = PORTF | PORTF_INPUT_MASK;
+#endif
+
+  XInput.setJoystickRange(0, ADC_MAX);
+  XInput.setTriggerRange(0, ADC_MAX);
 }
 
 /**

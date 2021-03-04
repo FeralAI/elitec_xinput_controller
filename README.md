@@ -15,9 +15,20 @@ This requires a total of 21 pins on the MCU board (15 digital inputs, 6 analog i
 
 The only compromise to be made is the ADC in the ATmega32U4 is only 10-bit, while the XInput joysticks are 16-bit, which results in greatly reduced resolution. An external [4-channel 16-bit ADC module](https://www.cqrobot.com/index.php?route=product/product&product_id=1124) can be used to resolve this. Using an external ADC via the I2C bus will net 2 additional I/O pins for a total of 5 available pins for things like player LEDs or rumble motors. This sketch does not implement any additional functionality beyond the basic inputs.
 
+## Optimizations
+
+Several steps have been taken to reduce the latency as much as possible:
+
+* **Fast state checking** - A lightweight process handles checking for state changes, avoiding much of the overhead from the XInput library state checks
+* **Conditional code inclusion** - Debug and options-based code are excluded from the final payload, the less code the better 😎
+* **Inline functions** - Used to avoid a few jumps and save some processing cycles
+* **Avoid implicit conversions** - Any values that could normally be checked as "truthy" or implicitly converted are instead checked against explicit values, again saving precious computing cycles
+* **Built with `-Ofast` optimization flag** - The program is much smaller and XInput operations run much faster with this or the `-O3` build flag set
+* **1000Hz/1ms polling rate** - Allows the controller to respond a few milliseconds faster than the stock 250Hz/4ms polling rate
+
 ## Performance
 
-Using the methodology outlined at [WydD's inputlag.science website](https://inputlag.science/), I've measured the performance of this sketch built with the -Ofast optimization level at the stock 4ms/250Hz polling rate and also with a 1ms/1000Hz polling rate. The detailed results can be found in the [Elite-C Controller Input Lag](https://docs.google.com/spreadsheets/d/1yfBr1uXyzMTwqz8_qHCONQ1BwaxIcIZJ1_DqN0GXziE) Google Doc. Here is a summary:
+Using the methodology outlined at [WydD's outstanding inputlag.science website](https://inputlag.science/controller/methodology), I've measured the performance of this sketch at the stock 4ms/250Hz polling rate and with a 1ms/1000Hz polling rate. The detailed results can be found in the [Elite-C Controller Input Lag spreadsheet](https://docs.google.com/spreadsheets/d/1yfBr1uXyzMTwqz8_qHCONQ1BwaxIcIZJ1_DqN0GXziE). Here are the important bits:
 
 | Metric    | Native | Overclock |
 | --------- | ------ | --------- |
@@ -72,9 +83,10 @@ Momentarily pull the reset pin on the Elite-C to ground to enter DFU bootloader,
 
 ## TODOs
 
-* Implement analog reads for sticks and triggers
-* Evaluate pin remapping for better read/parse speed
+* Test analog reads for sticks and triggers
 * Boards file
   * Create XInput boards repo for Elite-C
   * Evaluate options (was copied from Sparkfun Pro Micro board config)
   * Look at STM32 boards for Arduino IDE DFU example
+* Evaluate pin remapping
+* Figure out what's up with PD5 flakiness
