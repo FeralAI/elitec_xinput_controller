@@ -160,11 +160,10 @@ Here's an example of how the board can be set up for easy wiring. This is my cur
 
 ## Caveats
 
-The only compromise to be made is the ADC in the ATmega32U4 is only 10-bit, while the XInput joysticks are 16-bit, which results in greatly reduced resolution. An external [4-channel 16-bit ADC module](https://www.cqrobot.com/index.php?route=product/product&product_id=1124) can be used to resolve this. Using an external ADC via the I2C bus will net 2 additional I/O pins for a total of 5 available pins for things like player LEDs or rumble motors. This sketch does not implement any additional functionality beyond the basic inputs.
+The only compromise to be made is the ADC in the ATmega32U4 is only 10-bit, while the XInput joysticks are 16-bit, which results in reduced joystick resolution. This shouldn't be a problem in most cases, but may vary based on the game.
 
 ## TODOs
 
-* Evaluate pin remapping
 * Add LS/DP/RS stick emulation and selection options
 * Dig into XInput library for optimization opportunities
 * Other random micro-optimizations
