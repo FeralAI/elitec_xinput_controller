@@ -152,6 +152,12 @@ Some micro-optimizations have also been implemented:
 * **Inline functions** - Used to avoid a few jumps and save some processing cycles
 * **Avoid implicit conversions** - Any values that could normally be checked as "truthy" or implicitly converted are instead checked against explicit values, again saving precious cycles
 
+## Hardware
+
+Here's an example of how the board can be set up for easy wiring. This is my current dev board that consists of a [mini perma-proto board](https://www.amazon.com/gp/product/B085WPTQ9B), 2.54mm screw terminals and an I2C OLED for debugging. The Elite-C is directly soldered via the castellated pins and route to the screw terminals via the proto board rails:
+
+![ECX Dev Board](resources/ECX-dev-board.jpg)
+
 ## Caveats
 
 The only compromise to be made is the ADC in the ATmega32U4 is only 10-bit, while the XInput joysticks are 16-bit, which results in greatly reduced resolution. An external [4-channel 16-bit ADC module](https://www.cqrobot.com/index.php?route=product/product&product_id=1124) can be used to resolve this. Using an external ADC via the I2C bus will net 2 additional I/O pins for a total of 5 available pins for things like player LEDs or rumble motors. This sketch does not implement any additional functionality beyond the basic inputs.
